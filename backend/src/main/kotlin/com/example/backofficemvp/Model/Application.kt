@@ -1,0 +1,80 @@
+package com.example.backofficemvp.Model
+
+import org.bson.types.ObjectId
+import org.springframework.data.annotation.Id
+import org.springframework.data.mongodb.core.index.Indexed
+import org.springframework.data.mongodb.core.mapping.Document
+import java.math.BigDecimal
+import java.time.Instant
+import java.time.LocalDate
+
+enum class ApplicationStatus {
+    DRAFT,
+    PENDING_APPROVER_1,
+    PENDING_APPROVER_2,
+    APPROVED,
+    REJECTED,
+}
+
+enum class ApprovalAction {
+    APPROVED,
+    REJECTED,
+}
+
+data class PersonalDetails(
+    val firstName: String,
+    val lastName: String,
+    val dateOfBirth: LocalDate,
+    val gender: String,
+    val panNumber: String,
+    val email: String,
+    val mobile: String,
+)
+
+data class ForexCardDetails(
+    val cardType: String,
+    val currency: String,
+    val amount: BigDecimal,
+    val purpose: String,
+)
+
+data class AddressDetails(
+    val addressLine1: String,
+    val city: String,
+    val state: String,
+    val country: String,
+    val pincode: String,
+)
+
+data class TravelDetails(
+    val destinationCountry: String,
+    val departureDate: LocalDate,
+    val returnDate: LocalDate,
+    val purpose: String,
+)
+
+data class ApprovalDecision(
+    val userId: ObjectId? = null,
+    val action: ApprovalAction? = null,
+    val comment: String? = null,
+    val actionAt: Instant? = null,
+)
+
+data class ApprovalHistory(
+    val approver1: ApprovalDecision = ApprovalDecision(),
+    val approver2: ApprovalDecision = ApprovalDecision(),
+)
+
+@Document(collection = "applications")
+data class Application(
+    @Id val id: ObjectId = ObjectId(),
+    @Indexed(unique = true) val customerId: ObjectId,
+    @Indexed val status: ApplicationStatus = ApplicationStatus.DRAFT,
+    val personalDetails: PersonalDetails,
+    val forexCardDetails: ForexCardDetails,
+    val addressDetails: AddressDetails,
+    val travelDetails: TravelDetails,
+    val approvalHistory: ApprovalHistory = ApprovalHistory(),
+    val createdAt: Instant = Instant.now(),
+    val updatedAt: Instant = Instant.now(),
+)
