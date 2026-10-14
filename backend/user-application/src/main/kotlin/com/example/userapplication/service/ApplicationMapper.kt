@@ -103,6 +103,7 @@ private fun VerificationGroup.toResponse(): VerificationGroupResponse {
     return VerificationGroupResponse(
         code = code,
         label = groupLabel(code),
+        verifiedByLevel = verifiedByLevel,
         documents = documents.map { document ->
             DocumentVerificationResponse(
                 code = document.code,

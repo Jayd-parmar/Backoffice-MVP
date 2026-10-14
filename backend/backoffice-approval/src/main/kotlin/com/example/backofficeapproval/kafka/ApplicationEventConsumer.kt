@@ -5,6 +5,7 @@ import com.example.backofficeapproval.service.CountryApprovalRules
 import com.example.backofficeapproval.model.ApprovalHistory
 import com.example.backofficeapproval.model.BackofficeReview
 import com.example.backofficeapproval.repository.BackofficeRepository
+import com.example.backofficeapproval.service.VerificationGroupService
 import org.bson.types.ObjectId
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Component
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component
 @Component
 class ApplicationEventConsumer(
     private val backofficeRepository: BackofficeRepository,
+    private val verificationGroupService: VerificationGroupService,
 ) {
 
     @KafkaListener(topics = [ApplicationTopics.SUBMITTED], groupId = "backoffice-approval")
@@ -26,6 +28,8 @@ class ApplicationEventConsumer(
                 return
             }
         }
+        val groups = CountryApprovalRules.forCountry(event.travelDetails.destinationCountry)
+        verificationGroupService.save(applicationId, groups)
         backofficeRepository.save(
             BackofficeReview(
                 id = existing?.id ?: ObjectId(),
@@ -37,7 +41,6 @@ class ApplicationEventConsumer(
                 addressDetails = event.addressDetails,
                 travelDetails = event.travelDetails,
                 approvalHistory = ApprovalHistory(),
-                verificationGroups = CountryApprovalRules.forCountry(event.travelDetails.destinationCountry),
                 currentGroupIndex = 0,
                 createdAt = existing?.createdAt ?: event.createdAt,
                 updatedAt = event.updatedAt,

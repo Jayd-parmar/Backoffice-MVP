@@ -2,6 +2,7 @@ package com.example.backofficeapproval.service
 
 import com.example.backofficeapproval.model.DocumentCode
 import com.example.backofficeapproval.model.DocumentVerification
+import com.example.backofficeapproval.model.Role
 import com.example.backofficeapproval.model.VerificationGroup
 
 object CountryApprovalRules {
@@ -27,9 +28,14 @@ object CountryApprovalRules {
             )
             else -> throw IllegalArgumentException("Destination country is not supported")
         }
-        return sequence.map { (code, documents) ->
+        return sequence.mapIndexed { index, (code, documents) ->
             VerificationGroup(
                 code = code,
+                verifiedByLevel = when (index) {
+                    0 -> Role.APPROVER_1
+                    1 -> Role.APPROVER_2
+                    else -> Role.APPROVER_3
+                },
                 documents = documents.map { DocumentVerification(code = it) },
             )
         }

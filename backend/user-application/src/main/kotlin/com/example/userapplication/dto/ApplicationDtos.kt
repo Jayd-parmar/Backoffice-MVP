@@ -1,6 +1,7 @@
 package com.example.userapplication.dto
 
 import com.example.userapplication.model.AddressDetails
+import com.example.userapplication.model.ApproverLevel
 import com.example.userapplication.model.DocumentCode
 import com.example.userapplication.model.ApplicationStatus
 import com.example.userapplication.model.ApprovalAction
@@ -137,6 +138,7 @@ data class DocumentVerificationResponse(
 data class VerificationGroupResponse(
     val code: String,
     val label: String,
+    val verifiedByLevel: ApproverLevel? = null,
     val documents: List<DocumentVerificationResponse>,
 )
 

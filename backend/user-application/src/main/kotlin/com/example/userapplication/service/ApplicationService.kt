@@ -18,6 +18,7 @@ import java.time.Instant
 @Service
 class ApplicationService(
     private val applicationRepository: ApplicationRepository,
+    private val verificationGroupService: VerificationGroupService,
     private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
@@ -35,12 +36,12 @@ class ApplicationService(
             updatedAt = now,
         )
         ApplicationRules.validate(draft)
-        return applicationRepository.save(draft).toResponse()
+        return respond(applicationRepository.save(draft))
     }
 
     fun get(user: User, id: String): ApplicationResponse {
         requireCustomer(user)
-        return findOwned(user, id).toResponse()
+        return respond(findOwned(user, id))
     }
 
     fun update(user: User, id: String, request: ApplicationRequest): ApplicationResponse {
@@ -61,7 +62,7 @@ class ApplicationService(
             updatedAt = Instant.now(),
         )
         ApplicationRules.validate(updated)
-        return applicationRepository.save(updated).toResponse()
+        return respond(applicationRepository.save(updated))
     }
 
     fun submit(user: User, id: String): ApplicationResponse {
@@ -74,15 +75,16 @@ class ApplicationService(
             )
         }
         ApplicationRules.validate(existing)
+        val previousGroups = verificationGroupService.find(existing.id) ?: existing.verificationGroups
         val submitted = applicationRepository.save(
             existing.copy(
                 status = ApplicationStatus.PENDING_APPROVAL,
                 approvalHistory = ApprovalHistory(),
-                verificationGroups = emptyList(),
                 currentGroupIndex = 0,
                 updatedAt = Instant.now(),
             )
         )
+        verificationGroupService.save(existing.id, emptyList())
         try {
             applicationEventPublisher.submitted(submitted)
         } catch (ex: Exception) {
@@ -90,14 +92,19 @@ class ApplicationService(
                 submitted.copy(
                     status = existing.status,
                     approvalHistory = existing.approvalHistory,
-                    verificationGroups = existing.verificationGroups,
                     currentGroupIndex = existing.currentGroupIndex,
                     updatedAt = existing.updatedAt,
                 )
             )
+            verificationGroupService.save(existing.id, previousGroups)
             throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Approval queue is unavailable", ex)
         }
-        return submitted.toResponse()
+        return respond(submitted)
+    }
+
+    private fun respond(application: Application): ApplicationResponse {
+        val stored = verificationGroupService.find(application.id) ?: application.verificationGroups
+        return application.copy(verificationGroups = stored).toResponse()
     }
 
     private fun findOwned(user: User, id: String): Application {

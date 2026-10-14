@@ -2,6 +2,7 @@ package com.example.userapplication.kafka
 
 import com.example.userapplication.model.ApplicationStatus
 import com.example.userapplication.repository.ApplicationRepository
+import com.example.userapplication.service.VerificationGroupService
 import org.bson.types.ObjectId
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Component
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component
 @Component
 class ApplicationEventConsumer(
     private val applicationRepository: ApplicationRepository,
+    private val verificationGroupService: VerificationGroupService,
 ) {
 
     @KafkaListener(topics = [ApplicationTopics.DECIDED], groupId = "user-application")
@@ -25,11 +27,11 @@ class ApplicationEventConsumer(
         if (!event.updatedAt.isAfter(application.updatedAt)) {
             return
         }
+        verificationGroupService.save(application.id, event.verificationGroups)
         applicationRepository.save(
             application.copy(
                 status = event.status,
                 approvalHistory = event.approvalHistory.toModel(),
-                verificationGroups = event.verificationGroups,
                 currentGroupIndex = event.currentGroupIndex,
                 updatedAt = event.updatedAt,
             )

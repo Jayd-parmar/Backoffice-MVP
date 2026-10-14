@@ -29,6 +29,7 @@ import java.util.Date
 @Service
 class ApprovalService(
     private val backofficeRepository: BackofficeRepository,
+    private val verificationGroupService: VerificationGroupService,
     private val mongoTemplate: MongoTemplate,
     private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
@@ -37,7 +38,7 @@ class ApprovalService(
         return backofficeRepository.findByStatusAndCurrentGroupIndexOrderByUpdatedAtAsc(
             ApplicationStatus.PENDING_APPROVAL,
             levelIndex(user),
-        ).map { it.toResponse(maskPanNumber = true) }
+        ).map { withGroups(it).toResponse(maskPanNumber = true) }
     }
 
     fun open(user: User, id: String): ApplicationResponse {
@@ -50,10 +51,9 @@ class ApprovalService(
         val review = findReview(id)
         requireCurrentLevel(review, user)
         val group = currentGroup(review)
-        if (group.documents.none { it.code == code }) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "This document is not in the current review")
-        }
-        if (group.documents.first { it.code == code }.verified) {
+        val document = group.documents.find { it.code == code }
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "This document is not in the current review")
+        if (document.verified) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "This document is already verified")
         }
         val now = Instant.now()
@@ -136,7 +136,6 @@ class ApprovalService(
             ),
             Update()
                 .set("status", updated.status)
-                .set("verificationGroups", groupsDocument(updated.verificationGroups))
                 .set("currentGroupIndex", updated.currentGroupIndex)
                 .set("approvalHistory", historyDocument(updated.approvalHistory))
                 .set("updatedAt", updated.updatedAt),
@@ -144,30 +143,21 @@ class ApprovalService(
             BackofficeReview::class.java,
         ) ?: throw ResponseStatusException(HttpStatus.CONFLICT, "Application was already reviewed")
 
-        if (!publish) {
-            return saved
-        }
+        val result = saved.copy(verificationGroups = updated.verificationGroups)
         try {
-            applicationEventPublisher.decided(saved)
+            verificationGroupService.save(result.applicationId, result.verificationGroups)
+            if (publish) applicationEventPublisher.decided(result)
+            return result
         } catch (ex: Exception) {
-            mongoTemplate.findAndModify(
-                Query.query(
-                    Criteria.where("_id").`is`(saved.id)
-                        .and("status").`is`(saved.status)
-                        .and("currentGroupIndex").`is`(saved.currentGroupIndex),
-                ),
-                Update()
-                    .set("status", current.status)
-                    .set("verificationGroups", groupsDocument(current.verificationGroups))
-                    .set("currentGroupIndex", current.currentGroupIndex)
-                    .set("approvalHistory", historyDocument(current.approvalHistory))
-                    .set("updatedAt", current.updatedAt),
-                FindAndModifyOptions.options().returnNew(true),
-                BackofficeReview::class.java,
-            )
+            backofficeRepository.save(current)
+            verificationGroupService.save(current.applicationId, current.verificationGroups)
             throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Approval queue is unavailable", ex)
         }
-        return saved
+    }
+
+    private fun withGroups(review: BackofficeReview): BackofficeReview {
+        val groups = verificationGroupService.find(review.applicationId) ?: review.verificationGroups
+        return review.copy(verificationGroups = groups)
     }
 
     private fun currentGroup(review: BackofficeReview): VerificationGroup {
@@ -211,20 +201,6 @@ class ApprovalService(
         }
     }
 
-    private fun groupsDocument(groups: List<VerificationGroup>): List<Document> {
-        return groups.map { group ->
-            Document()
-                .append("code", group.code)
-                .append("documents", group.documents.map { document ->
-                    Document()
-                        .append("code", document.code.name)
-                        .append("verified", document.verified)
-                        .append("verifiedBy", document.verifiedBy)
-                        .append("verifiedAt", document.verifiedAt?.let(Date::from))
-                })
-        }
-    }
-
     private fun historyDocument(history: ApprovalHistory): Document {
         return Document()
             .append("approver1", decisionDocument(history.approver1))
@@ -244,7 +220,8 @@ class ApprovalService(
         if (!ObjectId.isValid(id)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid application id")
         }
-        return backofficeRepository.findByApplicationId(ObjectId(id))
+        val review = backofficeRepository.findByApplicationId(ObjectId(id))
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found")
+        return withGroups(review)
     }
 }

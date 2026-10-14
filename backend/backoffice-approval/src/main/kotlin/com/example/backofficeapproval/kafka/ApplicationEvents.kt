@@ -40,6 +40,7 @@ data class ApplicationDecidedEvent(
 
 data class VerificationGroupEvent(
     val code: String,
+    val verifiedByLevel: String? = null,
     val documents: List<DocumentVerificationEvent> = emptyList(),
 )
 
@@ -75,6 +76,7 @@ fun List<VerificationGroup>.toEvent(): List<VerificationGroupEvent> {
     return map { group ->
         VerificationGroupEvent(
             code = group.code,
+            verifiedByLevel = group.verifiedByLevel.name,
             documents = group.documents.map { document ->
                 DocumentVerificationEvent(
                     code = document.code,

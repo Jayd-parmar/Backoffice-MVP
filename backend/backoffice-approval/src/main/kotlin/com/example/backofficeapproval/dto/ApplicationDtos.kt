@@ -6,6 +6,7 @@ import com.example.backofficeapproval.model.ApplicationStatus
 import com.example.backofficeapproval.model.ApprovalAction
 import com.example.backofficeapproval.model.ForexCardDetails
 import com.example.backofficeapproval.model.PersonalDetails
+import com.example.backofficeapproval.model.Role
 import com.example.backofficeapproval.model.TravelDetails
 import java.time.Instant
 
@@ -31,6 +32,7 @@ data class DocumentVerificationResponse(
 data class VerificationGroupResponse(
     val code: String,
     val label: String,
+    val verifiedByLevel: Role,
     val documents: List<DocumentVerificationResponse>,
 )
 

@@ -2,6 +2,7 @@ package com.example.userapplication.model
 
 import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
+import org.springframework.data.annotation.ReadOnlyProperty
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
 import java.math.BigDecimal
@@ -86,9 +87,23 @@ data class DocumentVerification(
     val verifiedAt: Instant? = null,
 )
 
+enum class ApproverLevel {
+    APPROVER_1,
+    APPROVER_2,
+    APPROVER_3,
+}
+
 data class VerificationGroup(
     val code: String,
+    val verifiedByLevel: ApproverLevel? = null,
     val documents: List<DocumentVerification> = emptyList(),
+)
+
+@Document(collection = "verificationGroups")
+data class VerificationGroupsDocument(
+    @Id val id: ObjectId = ObjectId(),
+    @Indexed(unique = true) val applicationId: ObjectId,
+    val groups: List<VerificationGroup> = emptyList(),
 )
 
 @Document(collection = "applications")
@@ -101,7 +116,7 @@ data class Application(
     val addressDetails: AddressDetails,
     val travelDetails: TravelDetails,
     val approvalHistory: ApprovalHistory = ApprovalHistory(),
-    val verificationGroups: List<VerificationGroup> = emptyList(),
+    @ReadOnlyProperty val verificationGroups: List<VerificationGroup> = emptyList(),
     val currentGroupIndex: Int = 0,
     val createdAt: Instant = Instant.now(),
     val updatedAt: Instant = Instant.now(),
