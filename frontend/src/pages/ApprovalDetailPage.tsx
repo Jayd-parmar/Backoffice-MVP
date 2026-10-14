@@ -3,6 +3,8 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
+import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -11,9 +13,52 @@ import { useAuth } from '../useAuth'
 import { ApplicationDetails } from '../components/ApplicationDetails'
 import { ErrorState, LoadingState } from '../components/PageState'
 import { StatusChip } from '../components/StatusChip'
-import { formatDateTime } from '../format'
+import { formatDate, formatDateTime, titleCaseToken } from '../format'
 import { useApplication } from '../hooks/useApplication'
-import type { Application, DocumentCode } from '../types'
+import type { Application, DocumentCode, PersonalDetails } from '../types'
+
+function shown(value: string): string {
+  const text = value.trim()
+  return text || '—'
+}
+
+function documentDetails(code: DocumentCode, personal: PersonalDetails): { label: string; value: string }[] {
+  const name = shown(`${personal.firstName} ${personal.lastName}`)
+  const dateOfBirth = formatDate(personal.dateOfBirth)
+  switch (code) {
+    case 'AADHAAR':
+      return [
+        { label: 'Name', value: name },
+        { label: 'Date of birth', value: dateOfBirth },
+        { label: 'Gender', value: shown(titleCaseToken(personal.gender)) },
+        { label: 'Aadhaar number', value: shown(personal.aadhaarNumber) },
+      ]
+    case 'PAN':
+      return [
+        { label: 'Name', value: name },
+        { label: 'Date of birth', value: dateOfBirth },
+        { label: 'PAN', value: shown(personal.panNumber) },
+      ]
+    case 'PASSPORT':
+      return [
+        { label: 'Name', value: name },
+        { label: 'Date of birth', value: dateOfBirth },
+        { label: 'Passport number', value: shown(personal.passportNumber) },
+      ]
+    case 'VOTER_ID':
+      return [
+        { label: 'Name', value: name },
+        { label: 'Date of birth', value: dateOfBirth },
+        { label: 'Voter ID', value: shown(personal.voterId) },
+      ]
+    case 'DRIVING_LICENSE':
+      return [
+        { label: 'Name', value: name },
+        { label: 'Date of birth', value: dateOfBirth },
+        { label: 'Driving licence', value: shown(personal.drivingLicense) },
+      ]
+  }
+}
 
 export function ApprovalDetailPage() {
   const { id } = useParams()
@@ -115,50 +160,79 @@ export function ApprovalDetailPage() {
       {actionError ? <Alert severity="error">{actionError}</Alert> : null}
       <ApplicationDetails application={application} />
       {application.status === 'PENDING_APPROVAL' && currentGroup ? (
-      <Stack spacing={2} sx={{ p: { xs: 2, sm: 3 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
-        <Typography variant="h6">Verify {currentGroup.label}</Typography>
-        <Typography color="text.secondary">
-          Verify each document in this group, or approve all of them together. The application stays with you until this group is complete.
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ flexWrap: 'wrap' }}>
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="h6">Verify {currentGroup.label}</Typography>
+            <Typography color="text.secondary">
+              Review each document in this group and approve it. The application stays with you until this group is complete.
+            </Typography>
+          </Box>
           {currentGroup.documents.map((document) => (
-            <Button
-              key={document.code}
-              variant={document.verified ? 'outlined' : 'contained'}
-              disabled={document.verified || working !== null}
-              onClick={() => void verify(document.code)}
-            >
-              {document.verified
-                ? `${document.label} verified`
-                : working === document.code
-                  ? 'Verifying…'
-                  : `Verify ${document.label}`}
-            </Button>
+            <Paper key={document.code} variant="outlined" sx={{ p: { xs: 2, sm: 3 } }}>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="h6">{document.label}</Typography>
+                  {document.verified ? <Chip size="small" label="Approved" color="success" /> : null}
+                </Stack>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2,
+                  }}
+                >
+                  {documentDetails(document.code, application.personalDetails).map((field) => (
+                    <Box key={field.label}>
+                      <Typography variant="caption" color="text.secondary">
+                        {field.label}
+                      </Typography>
+                      <Typography variant="body1">{field.value}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+                <Box>
+                  <Button
+                    variant={document.verified ? 'outlined' : 'contained'}
+                    disabled={document.verified || working !== null}
+                    onClick={() => void verify(document.code)}
+                  >
+                    {document.verified
+                      ? 'Approved'
+                      : working === document.code
+                        ? 'Approving…'
+                        : `Approve ${document.label}`}
+                  </Button>
+                </Box>
+              </Stack>
+            </Paper>
           ))}
-          <Button variant="contained" color="success" disabled={working !== null} onClick={() => void approve()}>
-            {working === 'approve' ? 'Approving…' : 'Approve all'}
-          </Button>
+          {currentGroup.documents.length > 1 ? (
+            <Box>
+              <Button variant="contained" color="success" disabled={working !== null} onClick={() => void approve()}>
+                {working === 'approve' ? 'Approving…' : 'Approve all'}
+              </Button>
+            </Box>
+          ) : null}
+          <TextField
+            label="Rejection comment"
+            value={comment}
+            onChange={(event) => {
+              setComment(event.target.value)
+              setCommentError(null)
+            }}
+            error={Boolean(commentError)}
+            helperText={commentError ?? 'Required when you reject'}
+            multiline
+            minRows={3}
+            slotProps={{ htmlInput: { maxLength: 500 } }}
+            fullWidth
+          />
+          <Box>
+            <Button variant="outlined" color="error" disabled={working !== null} onClick={() => void reject()}>
+              {working === 'reject' ? 'Rejecting…' : 'Reject'}
+            </Button>
+          </Box>
         </Stack>
-        <TextField
-          label="Rejection comment"
-          value={comment}
-          onChange={(event) => {
-            setComment(event.target.value)
-            setCommentError(null)
-          }}
-          error={Boolean(commentError)}
-          helperText={commentError ?? 'Required when you reject'}
-          multiline
-          minRows={3}
-          slotProps={{ htmlInput: { maxLength: 500 } }}
-          fullWidth
-        />
-        <Box>
-          <Button variant="outlined" color="error" disabled={working !== null} onClick={() => void reject()}>
-            {working === 'reject' ? 'Rejecting…' : 'Reject'}
-          </Button>
-        </Box>
-      </Stack>
       ) : null}
     </Stack>
   )
