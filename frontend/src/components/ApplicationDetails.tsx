@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { formatAmount, formatDate, formatDateTime, titleCaseToken } from '../format'
+import { destinationLabel, formatAmount, formatDate, formatDateTime, titleCaseToken } from '../format'
 import type { Application, ApprovalDecision } from '../types'
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -63,6 +63,10 @@ export function ApplicationDetails({ application }: { application: Application }
         <Field label="Date of birth" value={formatDate(personalDetails.dateOfBirth)} />
         <Field label="Gender" value={titleCaseToken(personalDetails.gender)} />
         <Field label="PAN" value={personalDetails.panNumber} />
+        <Field label="Aadhaar" value={personalDetails.aadhaarNumber} />
+        <Field label="Passport" value={personalDetails.passportNumber} />
+        <Field label="Voter ID" value={personalDetails.voterId} />
+        <Field label="Driving licence" value={personalDetails.drivingLicense} />
         <Field label="Email" value={personalDetails.email} />
         <Field label="Mobile" value={personalDetails.mobile} />
       </Section>
@@ -79,14 +83,32 @@ export function ApplicationDetails({ application }: { application: Application }
         <Field label="Pincode" value={addressDetails.pincode} />
       </Section>
       <Section title="Travel">
-        <Field label="Destination" value={travelDetails.destinationCountry} />
+        <Field label="Destination" value={destinationLabel(travelDetails.destinationCountry)} />
         <Field label="Departure" value={formatDate(travelDetails.departureDate)} />
         <Field label="Return" value={formatDate(travelDetails.returnDate)} />
         <Field label="Purpose" value={titleCaseToken(travelDetails.purpose)} />
       </Section>
+      {application.verificationGroups.length > 0 ? (
+        <Section title="Document verification">
+          {application.verificationGroups.map((group, index) => (
+            <Box key={`${group.code}-${index}`} sx={{ gridColumn: '1 / -1' }}>
+              <Typography variant="subtitle2">
+                {index + 1}. {group.label}
+                {application.status === 'PENDING_APPROVAL' && index === application.currentGroupIndex ? ' · current' : ''}
+              </Typography>
+              {group.documents.map((document) => (
+                <Typography key={document.code} variant="body2" color="text.secondary">
+                  {document.label}: {document.verified ? 'Verified' : 'Not verified'}
+                </Typography>
+              ))}
+            </Box>
+          ))}
+        </Section>
+      ) : null}
       <Section title="Approval">
         <Decision title="Approver 1" decision={approvalHistory.approver1} />
         <Decision title="Approver 2" decision={approvalHistory.approver2} />
+        <Decision title="Approver 3" decision={approvalHistory.approver3} />
       </Section>
     </Stack>
   )

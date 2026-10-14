@@ -8,6 +8,8 @@ export function roleLabel(role: Role): string {
       return 'Approver 1'
     case 'APPROVER_2':
       return 'Approver 2'
+    case 'APPROVER_3':
+      return 'Approver 3'
   }
 }
 
@@ -15,6 +17,8 @@ export function statusLabel(status: ApplicationStatus): string {
   switch (status) {
     case 'DRAFT':
       return 'Draft'
+    case 'PENDING_APPROVAL':
+      return 'Pending approval'
     case 'PENDING_APPROVER_1':
       return 'Pending approver 1'
     case 'PENDING_APPROVER_2':
@@ -23,6 +27,21 @@ export function statusLabel(status: ApplicationStatus): string {
       return 'Approved'
     case 'REJECTED':
       return 'Rejected'
+  }
+}
+
+export function destinationLabel(value: string): string {
+  switch (value.trim().toUpperCase()) {
+    case 'INDIA':
+      return 'India'
+    case 'US':
+      return 'United States'
+    case 'UK':
+      return 'United Kingdom'
+    case 'NEPAL':
+      return 'Nepal'
+    default:
+      return value
   }
 }
 

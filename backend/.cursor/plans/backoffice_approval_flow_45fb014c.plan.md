@@ -221,6 +221,62 @@ Approver, JWT required:
 
 `ApprovalService` is the only writer of `status` and `approval`. Approver 2 cannot approve an application still in `PENDING_APPROVER_1`.
 
+## Country approval sequence
+
+Customers register and sign in on port 8081. Approvers register and sign in on port 8082. Submitting copies the destination's document groups onto the review. Each completed group publishes `application.decided`. Nepal finishes after the passport group.
+
+| Destination | Approver 1 | Approver 2 | Approver 3 |
+|---|---|---|---|
+| India | Aadhaar and PAN | Voter ID and driving licence | Passport |
+| UK | Aadhaar and PAN | Passport | Voter ID and driving licence |
+| US | Passport | Driving licence | Aadhaar and PAN |
+| Nepal | Passport, then approved | — | — |
+
+```mermaid
+sequenceDiagram
+  participant Customer
+  participant UserApp as user_application
+  participant Kafka
+  participant Backoffice as backoffice_approval
+  participant Level1 as ApproverLevel1
+  participant Level2 as ApproverLevel2
+  participant Level3 as ApproverLevel3
+
+  Customer->>UserApp: Register and login on port 8081
+  Level1->>Backoffice: Register APPROVER_1 and login on port 8082
+  Level2->>Backoffice: Register APPROVER_2 and login on port 8082
+  Level3->>Backoffice: Register APPROVER_3 and login on port 8082
+
+  Customer->>UserApp: Save draft with every document field
+  Customer->>UserApp: Submit
+  UserApp->>UserApp: Status PENDING_APPROVAL
+  UserApp->>Kafka: application.submitted
+  Kafka->>Backoffice: Consume submitted application
+  Backoffice->>Backoffice: Copy static groups for the destination
+
+  alt Destination is India
+    Level1->>Backoffice: Open queue and verify Aadhaar and PAN
+    Backoffice->>Kafka: application.decided priority 1 complete
+    Kafka->>UserApp: Store verified Aadhaar and PAN
+    Level2->>Backoffice: Verify voter ID and driving licence
+    Backoffice->>Kafka: application.decided priority 2 complete
+    Kafka->>UserApp: Store verified voter ID and driving licence
+    Level3->>Backoffice: Verify passport
+    Backoffice->>Kafka: application.decided APPROVED
+    Kafka->>UserApp: Status APPROVED
+  else Destination is Nepal
+    Level1->>Backoffice: Verify passport or Approve all
+    Backoffice->>Kafka: application.decided APPROVED
+    Kafka->>UserApp: Status APPROVED
+  end
+
+  alt Approver rejects the current group
+    Level1->>Backoffice: Reject with a comment
+    Backoffice->>Kafka: application.decided REJECTED
+    Kafka->>UserApp: Status REJECTED
+  end
+```
+
 ## How to start
 
 1. New Kotlin Spring Boot Gradle project: Web, Spring Data MongoDB, Security, Validation. Java 17. Database name in `application.properties`.

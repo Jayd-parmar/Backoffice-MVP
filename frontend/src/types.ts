@@ -1,7 +1,8 @@
-export type Role = 'CUSTOMER' | 'APPROVER_1' | 'APPROVER_2'
+export type Role = 'CUSTOMER' | 'APPROVER_1' | 'APPROVER_2' | 'APPROVER_3'
 
 export type ApplicationStatus =
   | 'DRAFT'
+  | 'PENDING_APPROVAL'
   | 'PENDING_APPROVER_1'
   | 'PENDING_APPROVER_2'
   | 'APPROVED'
@@ -9,12 +10,18 @@ export type ApplicationStatus =
 
 export type ApprovalAction = 'APPROVED' | 'REJECTED'
 
+export type DocumentCode = 'AADHAAR' | 'PAN' | 'PASSPORT' | 'VOTER_ID' | 'DRIVING_LICENSE'
+
 export type PersonalDetails = {
   firstName: string
   lastName: string
   dateOfBirth: string
   gender: string
   panNumber: string
+  aadhaarNumber: string
+  passportNumber: string
+  voterId: string
+  drivingLicense: string
   email: string
   mobile: string
 }
@@ -48,6 +55,18 @@ export type ApprovalDecision = {
   actionAt: string | null
 }
 
+export type DocumentVerification = {
+  code: DocumentCode
+  label: string
+  verified: boolean
+}
+
+export type VerificationGroup = {
+  code: string
+  label: string
+  documents: DocumentVerification[]
+}
+
 export type Application = {
   id: string
   customerId: string
@@ -59,7 +78,10 @@ export type Application = {
   approvalHistory: {
     approver1: ApprovalDecision
     approver2: ApprovalDecision
+    approver3: ApprovalDecision
   }
+  verificationGroups: VerificationGroup[]
+  currentGroupIndex: number
   createdAt: string
   updatedAt: string
 }

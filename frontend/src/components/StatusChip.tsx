@@ -4,6 +4,7 @@ import type { ApplicationStatus } from '../types'
 
 const colorByStatus: Record<ApplicationStatus, 'default' | 'warning' | 'info' | 'success' | 'error'> = {
   DRAFT: 'default',
+  PENDING_APPROVAL: 'warning',
   PENDING_APPROVER_1: 'warning',
   PENDING_APPROVER_2: 'info',
   APPROVED: 'success',

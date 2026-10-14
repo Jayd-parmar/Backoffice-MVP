@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { isApprover } from './session'
 import { useAuth } from './useAuth'
 import { AppShell } from './components/AppShell'
 import { LoadingState } from './components/PageState'
@@ -26,7 +27,7 @@ function RequireCustomer() {
 
 function RequireApprover() {
   const { session } = useAuth()
-  if (session?.role !== 'APPROVER_1' && session?.role !== 'APPROVER_2') {
+  if (!isApprover(session?.role)) {
     return <Navigate to="/home" replace />
   }
   return <Outlet />

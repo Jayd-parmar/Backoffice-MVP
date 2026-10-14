@@ -6,13 +6,14 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { ApiError, approveApplication, rejectApplication } from '../api'
+import { ApiError, approveApplication, rejectApplication, verifyDocument } from '../api'
 import { useAuth } from '../useAuth'
 import { ApplicationDetails } from '../components/ApplicationDetails'
 import { ErrorState, LoadingState } from '../components/PageState'
 import { StatusChip } from '../components/StatusChip'
 import { formatDateTime } from '../format'
 import { useApplication } from '../hooks/useApplication'
+import type { Application, DocumentCode } from '../types'
 
 export function ApprovalDetailPage() {
   const { id } = useParams()
@@ -22,20 +23,48 @@ export function ApprovalDetailPage() {
   const [comment, setComment] = useState('')
   const [commentError, setCommentError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [working, setWorking] = useState<'approve' | 'reject' | null>(null)
+  const [working, setWorking] = useState<'approve' | 'reject' | DocumentCode | null>(null)
 
   if (loading) return <LoadingState label="Loading application" />
   if (error || !application) return <ErrorState message={error ?? 'Application not found.'} onRetry={() => void reload()} />
 
+  const currentGroup = application.verificationGroups[application.currentGroupIndex]
+
+  function finishReview(beforeIndex: number, updated: Application) {
+    if (updated.status === 'APPROVED') {
+      navigate('/approvals', { replace: true, state: { notice: 'Application approved.' } })
+      return
+    }
+    if (updated.currentGroupIndex !== beforeIndex) {
+      navigate('/approvals', { replace: true, state: { notice: 'Verified and sent to the next approver.' } })
+      return
+    }
+    reload({ silent: true })
+  }
+
+  async function verify(code: DocumentCode) {
+    if (!application) return
+    const beforeIndex = application.currentGroupIndex
+    setWorking(code)
+    setActionError(null)
+    try {
+      const updated = await verifyDocument(application.id, code)
+      finishReview(beforeIndex, updated)
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Could not verify the document.')
+    } finally {
+      setWorking(null)
+    }
+  }
+
   async function approve() {
     if (!application || !session) return
+    const beforeIndex = application.currentGroupIndex
     setWorking('approve')
     setActionError(null)
     try {
-      await approveApplication(application.id)
-      const notice =
-        session.role === 'APPROVER_1' ? 'Approved and sent to Approver 2.' : 'Application approved.'
-      navigate('/approvals', { replace: true, state: { notice } })
+      const updated = await approveApplication(application.id)
+      finishReview(beforeIndex, updated)
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Could not approve the application.')
     } finally {
@@ -85,11 +114,29 @@ export function ApprovalDetailPage() {
       </Box>
       {actionError ? <Alert severity="error">{actionError}</Alert> : null}
       <ApplicationDetails application={application} />
+      {application.status === 'PENDING_APPROVAL' && currentGroup ? (
       <Stack spacing={2} sx={{ p: { xs: 2, sm: 3 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
-        <Typography variant="h6">Decision</Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+        <Typography variant="h6">Verify {currentGroup.label}</Typography>
+        <Typography color="text.secondary">
+          Verify each document in this group, or approve all of them together. The application stays with you until this group is complete.
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ flexWrap: 'wrap' }}>
+          {currentGroup.documents.map((document) => (
+            <Button
+              key={document.code}
+              variant={document.verified ? 'outlined' : 'contained'}
+              disabled={document.verified || working !== null}
+              onClick={() => void verify(document.code)}
+            >
+              {document.verified
+                ? `${document.label} verified`
+                : working === document.code
+                  ? 'Verifying…'
+                  : `Verify ${document.label}`}
+            </Button>
+          ))}
           <Button variant="contained" color="success" disabled={working !== null} onClick={() => void approve()}>
-            {working === 'approve' ? 'Approving…' : 'Approve'}
+            {working === 'approve' ? 'Approving…' : 'Approve all'}
           </Button>
         </Stack>
         <TextField
@@ -112,6 +159,7 @@ export function ApprovalDetailPage() {
           </Button>
         </Box>
       </Stack>
+      ) : null}
     </Stack>
   )
 }

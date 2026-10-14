@@ -5,7 +5,11 @@ const SESSION_KEY = 'backoffice.session'
 const listeners = new Set<() => void>()
 
 function isRole(value: unknown): value is Role {
-  return value === 'CUSTOMER' || value === 'APPROVER_1' || value === 'APPROVER_2'
+  return value === 'CUSTOMER' || value === 'APPROVER_1' || value === 'APPROVER_2' || value === 'APPROVER_3'
+}
+
+export function isApprover(role: Role | undefined): boolean {
+  return role === 'APPROVER_1' || role === 'APPROVER_2' || role === 'APPROVER_3'
 }
 
 function decodeBase64Url(value: string): string {

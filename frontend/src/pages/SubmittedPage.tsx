@@ -13,6 +13,16 @@ import type { Application } from '../types'
 
 function submittedCopy(application: Application): { title: string; body: string } {
   switch (application.status) {
+    case 'PENDING_APPROVAL': {
+      const level = application.currentGroupIndex + 1
+      const group = application.verificationGroups[application.currentGroupIndex]
+      return {
+        title: 'Submitted for approval',
+        body: group
+          ? `Your application is with approver ${level}, who is reviewing ${group.label}.`
+          : `Your application is waiting for approver ${level}.`,
+      }
+    }
     case 'PENDING_APPROVER_1':
       return {
         title: 'Submitted for approval',
@@ -26,7 +36,7 @@ function submittedCopy(application: Application): { title: string; body: string 
     case 'APPROVED':
       return {
         title: 'Application approved',
-        body: 'Both approvers have approved your forex application.',
+        body: 'Every required document group has been verified.',
       }
     case 'REJECTED':
       return {
@@ -51,7 +61,9 @@ export function SubmittedPage() {
 
   const copy = submittedCopy(application)
   const rejectionComment =
-    application.approvalHistory.approver2.comment || application.approvalHistory.approver1.comment
+    application.approvalHistory.approver3.comment ||
+    application.approvalHistory.approver2.comment ||
+    application.approvalHistory.approver1.comment
 
   return (
     <Stack spacing={3} sx={{ maxWidth: 880 }}>

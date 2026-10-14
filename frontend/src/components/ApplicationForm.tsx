@@ -14,6 +14,7 @@ import {
   CARD_TYPES,
   CURRENCIES,
   FOREX_PURPOSES,
+  DESTINATIONS,
   GENDERS,
   TRAVEL_PURPOSES,
   toRequest,
@@ -183,6 +184,46 @@ export function ApplicationForm({
           fullWidth
         />
         <TextField
+          id="personalDetails.aadhaarNumber"
+          label="Aadhaar"
+          value={values.personalDetails.aadhaarNumber}
+          onChange={(event) => update('personalDetails', 'aadhaarNumber', event.target.value)}
+          error={Boolean(errors['personalDetails.aadhaarNumber'])}
+          helperText={errors['personalDetails.aadhaarNumber'] ?? 'Optional'}
+          slotProps={{ htmlInput: { maxLength: 40 } }}
+          fullWidth
+        />
+        <TextField
+          id="personalDetails.passportNumber"
+          label="Passport"
+          value={values.personalDetails.passportNumber}
+          onChange={(event) => update('personalDetails', 'passportNumber', event.target.value.toUpperCase())}
+          error={Boolean(errors['personalDetails.passportNumber'])}
+          helperText={errors['personalDetails.passportNumber'] ?? 'Optional'}
+          slotProps={{ htmlInput: { maxLength: 40 } }}
+          fullWidth
+        />
+        <TextField
+          id="personalDetails.voterId"
+          label="Voter ID"
+          value={values.personalDetails.voterId}
+          onChange={(event) => update('personalDetails', 'voterId', event.target.value.toUpperCase())}
+          error={Boolean(errors['personalDetails.voterId'])}
+          helperText={errors['personalDetails.voterId'] ?? 'Optional'}
+          slotProps={{ htmlInput: { maxLength: 40 } }}
+          fullWidth
+        />
+        <TextField
+          id="personalDetails.drivingLicense"
+          label="Driving licence"
+          value={values.personalDetails.drivingLicense}
+          onChange={(event) => update('personalDetails', 'drivingLicense', event.target.value.toUpperCase())}
+          error={Boolean(errors['personalDetails.drivingLicense'])}
+          helperText={errors['personalDetails.drivingLicense'] ?? 'Optional'}
+          slotProps={{ htmlInput: { maxLength: 40 } }}
+          fullWidth
+        />
+        <TextField
           id="personalDetails.email"
           label="Email"
           type="email"
@@ -322,13 +363,25 @@ export function ApplicationForm({
       <SectionCard title="Travel">
         <TextField
           id="travelDetails.destinationCountry"
+          select
           label="Destination country"
           value={values.travelDetails.destinationCountry}
           onChange={(event) => update('travelDetails', 'destinationCountry', event.target.value)}
           error={Boolean(errors['travelDetails.destinationCountry'])}
           helperText={errors['travelDetails.destinationCountry']}
           fullWidth
-        />
+        >
+          <MenuItem value="">Select</MenuItem>
+          {DESTINATIONS.map((destination) => (
+            <MenuItem key={destination.value} value={destination.value}>
+              {destination.label}
+            </MenuItem>
+          ))}
+          {values.travelDetails.destinationCountry &&
+          !DESTINATIONS.some((destination) => destination.value === values.travelDetails.destinationCountry) ? (
+            <MenuItem value={values.travelDetails.destinationCountry}>{values.travelDetails.destinationCountry}</MenuItem>
+          ) : null}
+        </TextField>
         <TextField
           id="travelDetails.purpose"
           select

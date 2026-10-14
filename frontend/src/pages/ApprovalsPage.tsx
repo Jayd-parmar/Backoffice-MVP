@@ -10,7 +10,7 @@ import { ApiError, listPending } from '../api'
 import { useAuth } from '../useAuth'
 import { ErrorState, LoadingState } from '../components/PageState'
 import { StatusChip } from '../components/StatusChip'
-import { formatAmount, formatDate, roleLabel } from '../format'
+import { destinationLabel, formatAmount, formatDate, roleLabel } from '../format'
 import type { Application } from '../types'
 
 export function ApprovalsPage() {
@@ -48,9 +48,11 @@ export function ApprovalsPage() {
       <Box>
         <Typography variant="h4">{title}</Typography>
         <Typography color="text.secondary" sx={{ mt: 1 }}>
-          {session?.role === 'APPROVER_2'
-            ? 'Applications Approver 1 has approved and sent to you.'
-            : 'Applications waiting for your approval. Open one to see the full details.'}
+          {session?.role === 'APPROVER_3'
+            ? 'Applications move here only after Approver 2 verifies their group.'
+            : session?.role === 'APPROVER_2'
+              ? 'Applications move here only after Approver 1 verifies their group.'
+              : 'Applications whose first document group is waiting for you.'}
         </Typography>
       </Box>
       {notice ? <Alert severity="success">{notice}</Alert> : null}
@@ -81,8 +83,11 @@ export function ApprovalsPage() {
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {formatAmount(application.forexCardDetails.amount, application.forexCardDetails.currency)} ·{' '}
-                    {application.travelDetails.destinationCountry} ·{' '}
+                    {destinationLabel(application.travelDetails.destinationCountry)} ·{' '}
                     {formatDate(application.travelDetails.departureDate)}
+                    {application.verificationGroups[application.currentGroupIndex]
+                      ? ` · ${application.verificationGroups[application.currentGroupIndex].label}`
+                      : ''}
                   </Typography>
                 </Box>
                 <Button variant="contained" component={RouterLink} to={`/approvals/${application.id}`}>

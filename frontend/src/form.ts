@@ -7,6 +7,10 @@ export type FormValues = {
     dateOfBirth: string
     gender: string
     panNumber: string
+    aadhaarNumber: string
+    passportNumber: string
+    voterId: string
+    drivingLicense: string
     email: string
     mobile: string
   }
@@ -36,6 +40,12 @@ export const CARD_TYPES = ['MULTI_CURRENCY', 'SINGLE_CURRENCY'] as const
 export const CURRENCIES = ['USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'CAD', 'JPY'] as const
 export const FOREX_PURPOSES = ['TRAVEL', 'BUSINESS', 'EDUCATION', 'MEDICAL'] as const
 export const TRAVEL_PURPOSES = ['BUSINESS', 'LEISURE', 'EDUCATION', 'MEDICAL', 'TOURISM'] as const
+export const DESTINATIONS = [
+  { value: 'INDIA', label: 'India' },
+  { value: 'US', label: 'United States' },
+  { value: 'UK', label: 'United Kingdom' },
+  { value: 'NEPAL', label: 'Nepal' },
+] as const
 
 export function emptyForm(email = ''): FormValues {
   return {
@@ -45,6 +55,10 @@ export function emptyForm(email = ''): FormValues {
       dateOfBirth: '',
       gender: '',
       panNumber: '',
+      aadhaarNumber: '',
+      passportNumber: '',
+      voterId: '',
+      drivingLicense: '',
       email,
       mobile: '',
     },
@@ -124,6 +138,18 @@ export function validateForm(values: FormValues): Record<string, string> {
   if (!/^[0-9]{10}$/.test(personal.mobile.trim())) {
     errors['personalDetails.mobile'] = 'Mobile must be 10 digits'
   }
+  if (personal.aadhaarNumber.trim().length > 40) {
+    errors['personalDetails.aadhaarNumber'] = 'Aadhaar number must be at most 40 characters'
+  }
+  if (personal.passportNumber.trim().length > 40) {
+    errors['personalDetails.passportNumber'] = 'Passport number must be at most 40 characters'
+  }
+  if (personal.voterId.trim().length > 40) {
+    errors['personalDetails.voterId'] = 'Voter ID must be at most 40 characters'
+  }
+  if (personal.drivingLicense.trim().length > 40) {
+    errors['personalDetails.drivingLicense'] = 'Driving licence must be at most 40 characters'
+  }
 
   if (!forex.cardType.trim()) errors['forexCardDetails.cardType'] = 'Card type is required'
   if (!/^[A-Za-z]{3}$/.test(forex.currency.trim())) {
@@ -143,8 +169,11 @@ export function validateForm(values: FormValues): Record<string, string> {
   if (!address.pincode.trim()) errors['addressDetails.pincode'] = 'Pincode is required'
   else if (address.pincode.trim().length > 12) errors['addressDetails.pincode'] = 'Pincode must be at most 12 characters'
 
-  if (!travel.destinationCountry.trim()) {
+  const destination = travel.destinationCountry.trim().toUpperCase()
+  if (!destination) {
     errors['travelDetails.destinationCountry'] = 'Destination country is required'
+  } else if (!DESTINATIONS.some((item) => item.value === destination)) {
+    errors['travelDetails.destinationCountry'] = 'Destination must be India, the United States, the United Kingdom, or Nepal'
   }
   if (!travel.departureDate) errors['travelDetails.departureDate'] = 'Departure date is required'
   if (!travel.returnDate) errors['travelDetails.returnDate'] = 'Return date is required'
@@ -165,6 +194,10 @@ export function toRequest(values: FormValues): ApplicationRequest {
       dateOfBirth: values.personalDetails.dateOfBirth,
       gender: values.personalDetails.gender.trim(),
       panNumber: values.personalDetails.panNumber.trim(),
+      aadhaarNumber: values.personalDetails.aadhaarNumber.trim(),
+      passportNumber: values.personalDetails.passportNumber.trim(),
+      voterId: values.personalDetails.voterId.trim(),
+      drivingLicense: values.personalDetails.drivingLicense.trim(),
       email: values.personalDetails.email.trim(),
       mobile: values.personalDetails.mobile.trim(),
     },
@@ -182,7 +215,7 @@ export function toRequest(values: FormValues): ApplicationRequest {
       pincode: values.addressDetails.pincode.trim(),
     },
     travelDetails: {
-      destinationCountry: values.travelDetails.destinationCountry.trim(),
+      destinationCountry: values.travelDetails.destinationCountry.trim().toUpperCase(),
       departureDate: values.travelDetails.departureDate,
       returnDate: values.travelDetails.returnDate,
       purpose: values.travelDetails.purpose.trim(),

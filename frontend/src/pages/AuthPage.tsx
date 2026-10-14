@@ -9,17 +9,20 @@ import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
-import { ApiError, login, registerAccount } from '../api'
+import { ApiError, login, registerAccount, type AuthPortal } from '../api'
 import { useAuth } from '../useAuth'
 import { LoadingState } from '../components/PageState'
 import { roleLabel } from '../format'
 import type { Role } from '../types'
 
-const roles: Role[] = ['CUSTOMER', 'APPROVER_1', 'APPROVER_2']
+const approverRoles: Role[] = ['APPROVER_1', 'APPROVER_2', 'APPROVER_3']
 
 export function AuthPage() {
   const { session, ready } = useAuth()
+  const [portal, setPortal] = useState<AuthPortal>('customer')
   const [tab, setTab] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -52,10 +55,11 @@ export function AuthPage() {
     }
     setSubmitting(true)
     try {
+      const accountRole = portal === 'customer' ? 'CUSTOMER' : role
       if (tab === 'register') {
-        await registerAccount({ email, password, role, name, phone })
+        await registerAccount({ email, password, role: accountRole, name, phone, portal })
       }
-      await login(email, password)
+      await login(email, password, portal)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not sign you in.')
     } finally {
@@ -87,13 +91,14 @@ export function AuthPage() {
             Forex Backoffice
           </Typography>
           <Typography sx={{ mt: 2, color: 'rgba(255,255,255,0.82)' }}>
-            Customers save a draft, review it, and submit it for two levels of approval.
+            Customers save a draft, review it, and submit it. Approvers verify documents in the order set for the destination country.
           </Typography>
         </Box>
         <Stack spacing={2}>
           <Typography variant="body2">Customer — fill the application, review it, then submit.</Typography>
-          <Typography variant="body2">Approver 1 — review applications waiting for the first decision.</Typography>
-          <Typography variant="body2">Approver 2 — review applications Approver 1 has already approved.</Typography>
+          <Typography variant="body2">Approver 1 — verifies the first document group.</Typography>
+          <Typography variant="body2">Approver 2 — verifies the next group after Approver 1 finishes.</Typography>
+          <Typography variant="body2">Approver 3 — verifies the last group after Approver 2 finishes.</Typography>
         </Stack>
       </Box>
 
@@ -101,6 +106,26 @@ export function AuthPage() {
         <Paper variant="outlined" sx={{ width: '100%', maxWidth: 460, p: { xs: 2.5, sm: 4 } }}>
           <Typography variant="h5" sx={{ display: { md: 'none' }, mb: 2 }}>
             Forex Backoffice
+          </Typography>
+          <ToggleButtonGroup
+            exclusive
+            fullWidth
+            value={portal}
+            onChange={(_event, value: AuthPortal | null) => {
+              if (!value) return
+              setPortal(value)
+              setRole(value === 'customer' ? 'CUSTOMER' : 'APPROVER_1')
+              setError(null)
+            }}
+            sx={{ mb: 1 }}
+          >
+            <ToggleButton value="customer">Customer</ToggleButton>
+            <ToggleButton value="approver">Approver</ToggleButton>
+          </ToggleButtonGroup>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {portal === 'customer'
+              ? 'Customer sign-in uses the application service on port 8081.'
+              : 'Approver sign-in uses the approval service on port 8082.'}
           </Typography>
           <Tabs
             value={tab}
@@ -126,19 +151,21 @@ export function AuthPage() {
                   fullWidth
                   required
                 />
-                <TextField
-                  select
-                  label="Role"
-                  value={role}
-                  onChange={(event) => setRole(event.target.value as Role)}
-                  fullWidth
-                >
-                  {roles.map((item) => (
-                    <MenuItem key={item} value={item}>
-                      {roleLabel(item)}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                {portal === 'approver' ? (
+                  <TextField
+                    select
+                    label="Role"
+                    value={role}
+                    onChange={(event) => setRole(event.target.value as Role)}
+                    fullWidth
+                  >
+                    {approverRoles.map((item) => (
+                      <MenuItem key={item} value={item}>
+                        {roleLabel(item)}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : null}
                 <TextField
                   label="Phone"
                   value={phone}
